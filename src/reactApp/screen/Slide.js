@@ -5,6 +5,9 @@ import { SUPPORTED_VIDEO, SUPPORTED_IMAGE, getAnimationText } from '../constants
 import styled, { keyframes } from 'styled-components';
 import * as Animations from 'react-animations';
 import { getFilePath } from '../helpers/downloadFile';
+import { ContentHistory } from '../api/video';
+import { getContentHistory, saveLocalContentHistoryError } from '../helpers/contentHistory';
+import { getToken } from '../helpers/utils';
 
 const MAX_COUNT = 1000;
 
@@ -29,7 +32,6 @@ export default class Slide extends React.Component {
     begin: null,
     playlist: {},
     slide: [],
-    flag: false,
     playNext: false
     // screenHeight: Dimensions.get('screen').height,
     // screenWidth: Dimensions.get('screen').width
@@ -52,20 +54,19 @@ export default class Slide extends React.Component {
   };
 
   setNextSlide = () => {
-    // this.requestContentHistory(this.state.current);
+    this.requestContentHistory(this.state.current);
     this.setState(state => {
       return {
         current: this.getNewSlideIndex(1),
         count: (state.count + 1) % MAX_COUNT,
         prev: state.current,
         pausedText: 'Play',
-        flag: false,
         renderBackground: true,
         renderNext: false,
         begin: new Date()
       };
     }, () => {
-      this.video && typeof this.video.play === 'function' && this.video.play();
+      this.play();
       setTimeout(() => {
         this.setState({ renderBackground: false });
 
@@ -74,6 +75,42 @@ export default class Slide extends React.Component {
       this.checkIfMediaNeedSchedule(this.state.current);
     });
     // this.seekToStart();
+  };
+
+  play = () => {
+    this.video && typeof this.video.play === 'function' && this.video.play();
+  };
+
+  requestContentHistory = (index) => {
+    const {
+      begin,
+      slide
+    } = this.state;
+    if (!slide[index]) {
+      return;
+    }
+    const isVideo = SUPPORTED_VIDEO.indexOf(slide[index].ext) > -1;
+    const serverSettingDuration = slide[index].duration / 1000;
+    const contentHistory = {
+      begin: begin,
+      duration: serverSettingDuration || (isVideo ? this.totalVideoDuration : 3),
+      content: slide[index].id
+    };
+    const localContentHistory = getContentHistory();
+    const endPoint = {
+      contentHistory: localContentHistory ? [contentHistory, ...localContentHistory] : [contentHistory],
+      deviceToken: getToken()
+    };
+    ContentHistory(
+      endPoint
+    ).then(result => {
+      if (result.status !== 200) {
+        saveLocalContentHistoryError(contentHistory);
+      }
+      localStorage.removeItem('content-history');
+    }).catch(err => {
+      saveLocalContentHistoryError(contentHistory);
+    });
   };
 
   componentDidUpdate(prevProps, prevState, snapshot) {
@@ -103,14 +140,11 @@ export default class Slide extends React.Component {
   setPlayList = () => {
     console.log('check playlist');
     this.setPlaylistTimeout = setTimeout(this.setPlayList, 2000);
-    if (this.state.flag === true) {
-      return;
-    }
     const now = moment();
     const schedule = ScheduleManager.getSchedule();
     let current = null;
     const currentSchedule = schedule.filter(s => {
-      return now.isBetween(moment(s.activeFrom), moment(s.activeTo), null, []);
+      return now.isBetween(moment(s.activeFrom), moment(s.activeTo), null, '[)');
     });
     currentSchedule.find(s => {
       const currentPlaylist = s.weekdaySchedule.find(weekday => {
@@ -174,9 +208,6 @@ export default class Slide extends React.Component {
       slide
     } = this.state;
     const currentImage = slide[current];
-    this.setState({
-      flag: true
-    });
     let timeout;
     if (SUPPORTED_IMAGE.includes(currentImage.ext)) {
       timeout = currentImage.duration || 3000;
@@ -292,7 +323,9 @@ export default class Slide extends React.Component {
           onEnded={() => {
             this.setNextSlide();
           }}
-          onLoadStart={() => console.log('load')}
+          onLoadedMetadata={() => {
+            this.totalVideoDuration = this.video.duration;
+          }}
           onError={(e) => {
             console.log(e);
             // this.setNextSlide();

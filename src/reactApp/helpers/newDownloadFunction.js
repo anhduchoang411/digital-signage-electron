@@ -52,8 +52,8 @@ class DownloadManager {
           .then((res) => {
             resolve(res);
           })
-          .catch(() => {
-            console.log('retry');
+          .catch((e) => {
+            console.log('retry', e);
             return this.downloadFileAndMd5(url, onProgress, count + 1, 'md5 not equal')
               .then(resolve).catch(reject);
           });
@@ -108,7 +108,6 @@ class DownloadManager {
     const writeStream = fs.createWriteStream(pathToWrite, {
       encoding: null
     });
-    console.log(sortParts);
     for (let i = 0; i < sortParts.length; i++) {
       const pathToRead = sortParts[i];
       console.log(pathToRead);

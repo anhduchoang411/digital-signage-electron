@@ -9,6 +9,8 @@ import PlaylistManager from './helpers/playlist';
 import ScheduleManager from './helpers/schedule';
 import DownloadManager from './helpers/newDownloadFunction';
 import { Line } from 'rc-progress';
+import { readDir, removeFile } from './helpers/downloadFile';
+import path from 'path';
 
 const token = getToken();
 
@@ -78,6 +80,23 @@ class App extends React.Component {
     this.socket.emit('APP_LISTENER_FILE_PROGRESS', this.state.job._id, newListProgress);
   };
 
+  async clearData() {
+    const deleteFiles = new Promise((resolve, reject) => {
+      readDir()
+        .then(files => {
+          return Promise.all(files.map(item => {
+            removeFile(item);
+          }));
+        })
+        .then(resolve).catch(reject);
+    });
+    return Promise.all([
+      deleteFiles,
+      PlaylistManager.removeItem(),
+      ScheduleManager.removeItem()
+    ]);
+  };
+
   socketHandler(token) {
     if (this.socket && typeof this.socket.close === 'function') {
       this.socket.close();
@@ -105,7 +124,32 @@ class App extends React.Component {
     });
 
     this.socket.on('APP_ACTION_PUSH_FILES', (callback) => {
-      callback(null, ['Web']);
+      readDir()
+        .then(files => {
+          callback(null, files);
+        })
+        .catch(err => {
+          callback(err.message);
+        });
+    });
+
+    this.socket.on('APP_ACTION_DELETE_FILE', (fileName, callback) => {
+      removeFile(fileName)
+        .then(files => {
+          callback(null);
+        })
+        .catch(err => {
+          callback(err.message);
+        });
+    });
+
+    this.socket.on('APP_ACTION_DELETE_DEVICE_DATA', async (status, callback) => {
+      const deleteDevice = new Promise((resolve, reject) => {
+        this.clearData().then(resolve);
+      });
+      deleteDevice.then(value => {
+        callback();
+      });
     });
 
     this.socket.on('APP_ACTION_PUSH_DEVICE_STORAGE', async (status, callback) => {
@@ -131,6 +175,8 @@ class App extends React.Component {
 
     this.socket.on('APP_EVENT_RECEIVE_SCHEDULE', async (schedule, job, callback) => {
       const listFileDownload = this.getListFileFromSchedule(schedule);
+      console.log(schedule);
+      console.log(listFileDownload);
       this.socket.emit('APP_LISTENER_DOWNLOAD_FILE', job._id, 'running', 'playlist');
       this.setState({
         listProgress: listFileDownload.map(i => {

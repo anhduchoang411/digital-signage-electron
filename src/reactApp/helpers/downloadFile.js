@@ -85,4 +85,27 @@ export function getFilePath(fileName) {
   return `file://${path.join(prefixDir, 'playlist', fileName)}`;
 }
 
-console.log(getFilePath(''));
+export function readDir() {
+  return new Promise((resolve, reject) => {
+    fs.readdir(path.join(prefixDir, 'playlist'), (err, files) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(files);
+      }
+    });
+  });
+}
+
+
+export function removeFile(name) {
+  return new Promise((resolve, reject) => {
+    fs.unlink(path.join(prefixDir, 'playlist', name), (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
