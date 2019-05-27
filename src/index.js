@@ -15,17 +15,20 @@ const createWindow = () => {
   // Create the browser window.
 
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1024,
+    height: 768,
     webPreferences: {
       nodeIntegration: true,
       webSecurity: false
-    }
+    },
+    frame: false
   });
 
   // and load the index.html of the app.
-  mainWindow.setFullScreen(true)
+  mainWindow.setFullScreen(true);
+  mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
 
+  mainWindow.webContents.setLayoutZoomLevelLimits(1, 1);
   if (isDev) {
     console.log('Running in development');
     mainWindow.loadURL(`http://localhost:3000`);
