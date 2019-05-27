@@ -24,6 +24,7 @@ const createWindow = () => {
   });
 
   // and load the index.html of the app.
+  mainWindow.setFullScreen(true)
 
   if (isDev) {
     console.log('Running in development');
