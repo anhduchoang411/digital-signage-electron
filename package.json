@@ -50,7 +50,7 @@
     "electron-squirrel-startup": "^1.0.0",
     "fs-extra": "7.0.1",
     "lodash": "latest",
-    "moment": "^2.24.0",
+    "moment": "^2.29.4",
     "rc-progress": "^2.3.0",
     "react": "^16.8.6",
     "react-animations": "^1.0.0",
